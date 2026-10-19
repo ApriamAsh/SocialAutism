@@ -7,11 +7,14 @@
   "license": "UNLICENSED",
   "scripts": {
     "start": "electron .",
-    "dist:win": "electron-builder --win nsis"
+    "dist:win": "npm run build:renderer && electron-builder --win nsis",
+    "build:renderer": "esbuild renderer.js --bundle --format=iife --outfile=renderer.bundle.js"
   },
   "devDependencies": {
     "electron": "^38.2.0",
-    "electron-builder": "^26.0.12"
+    "electron-builder": "^26.0.12",
+    "three": "^0.180.0",
+    "esbuild": "^0.25.10"
   },
   "build": {
     "appId": "com.darkfyre.socialatlas",
@@ -23,7 +26,7 @@
       "main.js",
       "index.html",
       "styles.css",
-      "renderer.js",
+      "renderer.bundle.js",
       "package.json"
     ],
     "win": {
