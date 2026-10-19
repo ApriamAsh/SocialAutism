@@ -1,3 +1,6 @@
+import * as THREE from 'three';
+window.THREE = THREE;
+
 (() => {
 'use strict';
 const $ = id => document.getElementById(id);
