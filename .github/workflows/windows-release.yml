@@ -28,7 +28,7 @@ jobs:
           tag_name: v0.1.${{ github.run_number }}
           name: Social Atlas v0.1.${{ github.run_number }}
           body: |
-            Automated Windows desktop build of Social Atlas.
+            Automated Windows desktop build of Social Atlas with a movable 3D social network graph.
 
             **Install:** Download the Windows installer below and run it.
             This is an early preview. Your people, relationship, and event data are stored locally in the app's Electron storage.
