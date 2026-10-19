@@ -18,7 +18,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: npm
       - name: Install dependencies
         run: npm install
       - name: Build Windows installer
@@ -31,7 +30,7 @@ jobs:
           body: |
             Automated Windows desktop build of Social Atlas.
 
-            **Install:** Download `Social-Atlas-Setup-0.1.0.exe` below and run it.
+            **Install:** Download the Windows installer below and run it.
             This is an early preview. Your people, relationship, and event data are stored locally in the app's Electron storage.
           draft: false
           prerelease: false
