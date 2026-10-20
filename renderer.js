@@ -87,5 +87,30 @@ $('event-form').addEventListener('submit',e=>{e.preventDefault();const title=$('
 function exportData(){const blob=new Blob([JSON.stringify({...data,exportedAt:new Date().toISOString(),app:'Social Atlas'},null,2)],{type:'application/json'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='social-atlas-backup-'+new Date().toISOString().slice(0,10)+'.json';a.click();URL.revokeObjectURL(url);toast('Backup exported')}
 $('export').onclick=exportData;$('import-file').addEventListener('change',async e=>{const file=e.target.files?.[0];if(!file)return;try{const incoming=JSON.parse(await file.text());if(!Array.isArray(incoming.people)||!Array.isArray(incoming.relationships)||!Array.isArray(incoming.events))throw new Error('Invalid backup format');if(!confirm('Import this backup and replace the current local data? Export a backup first if needed.'))return;data={people:incoming.people,relationships:incoming.relationships,events:incoming.events};selectedId=null;persist();renderAll();toast('Backup imported')}catch(err){alert('Could not import backup: '+err.message)}finally{e.target.value=''}});
 $('add-person').onclick=()=>openPerson();$('empty-add').onclick=()=>openPerson();$('list-add').onclick=()=>openPerson();$('add-event').onclick=()=>openEvent();$('filter-type').onchange=renderGraph;$('search').addEventListener('input',()=>{renderPeople();const q=$('search').value.trim().toLowerCase();if(q){const p=sortedPeople().find(p=>p.name.toLowerCase().includes(q));if(p){selectedId=p.id;renderGraph();renderProfile()}}});document.querySelectorAll('.nav').forEach(b=>b.addEventListener('click',()=>setView(b.dataset.view)));$('search').addEventListener('keydown',e=>{if(e.key==='Enter'){const p=sortedPeople().find(p=>p.name.toLowerCase().includes(e.target.value.trim().toLowerCase()));if(p){selectedId=p.id;setView('map')}}});$('empty-add')?.addEventListener('click',()=>openPerson());document.addEventListener('keydown',e=>{if(e.key==='/'&&!['INPUT','TEXTAREA','SELECT'].includes(document.activeElement.tagName)){e.preventDefault();$('search').focus()}if(e.key==='Escape'){document.querySelectorAll('dialog[open]').forEach(d=>d.close())}});window.addEventListener('resize',()=>{if(currentView==='map')renderGraph()});
+$('check-updates').addEventListener('click', async () => {
+  const button = $('check-updates');
+  if (!window.socialAtlasUpdater) { toast('Updater unavailable in this build.'); return; }
+  button.disabled = true;
+  button.textContent = 'Checking…';
+  try {
+    const result = await window.socialAtlasUpdater.check();
+    if (!result.ok) throw new Error(result.message || 'Could not check for updates');
+    if (!result.updateAvailable) {
+      toast('You are already on the latest source version.');
+      return;
+    }
+    const shortCommit = result.latest.slice(0, 7);
+    if (!confirm('A Social Atlas update is available (' + shortCommit + '). Your people and relationship data stay local. Apply the update and reload now?')) return;
+    button.textContent = 'Updating…';
+    const applied = await window.socialAtlasUpdater.apply();
+    if (!applied.ok) throw new Error(applied.message || 'Update failed');
+    toast('Updated successfully. Reloading…');
+  } catch (error) {
+    alert('Could not update Social Atlas: ' + error.message);
+  } finally {
+    button.disabled = false;
+    button.textContent = 'Check for updates';
+  }
+});
 renderAll();
 })();
