@@ -15,8 +15,7 @@ jobs:
       - name: Check out source
         uses: actions/checkout@v4
 
-      # Deliberately do not enable setup-node's npm cache here:
-      # this repository currently has no package-lock.json.
+      # No npm cache: this repository intentionally has no committed lockfile.
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
@@ -28,17 +27,18 @@ jobs:
       - name: Build Windows installer
         run: npm run dist:win
 
-      # Preserve a downloadable installer even if publishing the release fails.
-      - name: Upload installer build artifact
+      # Upload both outputs so the installer is available even if release publishing fails.
+      - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: Social-Atlas-Windows-Installer
-          path: dist/Social-Atlas-Setup-0.1.0.exe
+          name: Social-Atlas-Windows-Build
+          path: |
+            dist/Social-Atlas-Setup-0.1.0.exe
             renderer.bundle.js
           if-no-files-found: error
           retention-days: 14
 
-      - name: Publish installer to GitHub Releases
+      - name: Publish installer and update bundle to GitHub Releases
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v0.1.${{ github.run_number }}
@@ -47,9 +47,11 @@ jobs:
             Automated Windows desktop build of Social Atlas with a movable 3D social network graph.
 
             **Install:** Download the Windows installer below and run it.
-            This is an early preview. Your people, relationship, and event data are stored locally in the app's Electron storage.
+            The renderer bundle is also published for in-app frontend updates.
+            This is an early preview. Your people, relationship, and event data are stored locally on this device.
           draft: false
           prerelease: false
           make_latest: true
           files: |
             dist/Social-Atlas-Setup-0.1.0.exe
+            renderer.bundle.js
