@@ -34,6 +34,7 @@ jobs:
         with:
           name: Social-Atlas-Windows-Installer
           path: dist/Social-Atlas-Setup-0.1.0.exe
+            renderer.bundle.js
           if-no-files-found: error
           retention-days: 14
 
