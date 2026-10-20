@@ -14,14 +14,29 @@ jobs:
     steps:
       - name: Check out source
         uses: actions/checkout@v4
+
+      # Deliberately do not enable setup-node's npm cache here:
+      # this repository currently has no package-lock.json.
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 22
+
       - name: Install dependencies
-        run: npm install
+        run: npm install --no-audit --no-fund
+
       - name: Build Windows installer
         run: npm run dist:win
+
+      # Preserve a downloadable installer even if publishing the release fails.
+      - name: Upload installer build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Social-Atlas-Windows-Installer
+          path: dist/Social-Atlas-Setup-0.1.0.exe
+          if-no-files-found: error
+          retention-days: 14
+
       - name: Publish installer to GitHub Releases
         uses: softprops/action-gh-release@v2
         with:
