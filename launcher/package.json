@@ -1,0 +1,33 @@
+{
+  "name": "social-atlas-launcher",
+  "version": "1.0.0",
+  "description": "Dark sci-fi launcher and updater for Social Atlas",
+  "main": "main.js",
+  "author": "ApriamAsh",
+  "license": "UNLICENSED",
+  "scripts": {
+    "start": "electron .",
+    "dist:win": "electron-builder --win nsis --publish never"
+  },
+  "devDependencies": {
+    "electron": "^38.2.0",
+    "electron-builder": "^26.0.12"
+  },
+  "build": {
+    "appId": "com.darkfyre.socialatlas.launcher",
+    "productName": "Social Atlas Launcher",
+    "directories": { "output": "dist" },
+    "files": ["main.js", "preload.js", "index.html"],
+    "win": {
+      "target": [{ "target": "nsis", "arch": ["x64"] }],
+      "artifactName": "Social-Atlas-Launcher-Setup-${version}.${ext}"
+    },
+    "nsis": {
+      "oneClick": true,
+      "perMachine": false,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Social Atlas Launcher"
+    }
+  }
+}
