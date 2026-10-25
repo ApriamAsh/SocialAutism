@@ -21,37 +21,48 @@ jobs:
         with:
           node-version: 22
 
-      - name: Install dependencies
+      - name: Install Social Atlas dependencies
         run: npm install --no-audit --no-fund
 
-      - name: Build Windows installer
+      - name: Build Social Atlas installer
         run: npm run dist:win
 
-      # Upload both outputs so the installer is available even if release publishing fails.
-      - name: Upload build artifacts
+      - name: Install launcher dependencies
+        working-directory: launcher
+        run: npm install --no-audit --no-fund
+
+      - name: Build standalone launcher installer
+        working-directory: launcher
+        run: npm run dist:win
+
+      - name: Upload Windows build artifacts
         uses: actions/upload-artifact@v4
         with:
           name: Social-Atlas-Windows-Build
           path: |
             dist/Social-Atlas-Setup-0.1.0.exe
             renderer.bundle.js
+            launcher/dist/Social-Atlas-Launcher-Setup-1.0.0.exe
           if-no-files-found: error
           retention-days: 14
 
-      - name: Publish installer and update bundle to GitHub Releases
+      - name: Publish app, launcher, and update bundle to GitHub Releases
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v0.1.${{ github.run_number }}
           name: Social Atlas v0.1.${{ github.run_number }}
           body: |
-            Automated Windows desktop build of Social Atlas with a movable 3D social network graph.
+            Automated Windows build of Social Atlas and its standalone launcher.
 
-            **Install:** Download the Windows installer below and run it.
-            The renderer bundle is also published for in-app frontend updates.
-            This is an early preview. Your people, relationship, and event data are stored locally on this device.
+            - **Social-Atlas-Setup-0.1.0.exe** — Social Atlas desktop app.
+            - **Social-Atlas-Launcher-Setup-1.0.0.exe** — standalone launcher with GitHub release checking, downloading, install/update, and launch controls.
+            - **renderer.bundle.js** — frontend update bundle for supported in-app updates.
+
+            Your people, relationships, and events remain stored locally on this device.
           draft: false
           prerelease: false
           make_latest: true
           files: |
             dist/Social-Atlas-Setup-0.1.0.exe
             renderer.bundle.js
+            launcher/dist/Social-Atlas-Launcher-Setup-1.0.0.exe
