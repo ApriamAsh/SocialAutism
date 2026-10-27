@@ -47,6 +47,21 @@ jobs:
         working-directory: launcher
         run: npm run dist:win
 
+      - name: Enforce versioned installer filenames
+        shell: pwsh
+        run: |
+          $version = $env:APP_VERSION
+          $app = Get-ChildItem -Path dist -Filter 'Social-Atlas-Setup-*.exe' | Select-Object -First 1
+          $launcher = Get-ChildItem -Path launcher/dist -Filter 'Social-Atlas-Launcher-Setup-*.exe' | Select-Object -First 1
+          if (-not $app) { throw 'Social Atlas installer was not produced.' }
+          if (-not $launcher) { throw 'Social Atlas Launcher installer was not produced.' }
+          $appTarget = Join-Path $app.DirectoryName "Social-Atlas-Setup-$version.exe"
+          $launcherTarget = Join-Path $launcher.DirectoryName "Social-Atlas-Launcher-Setup-$version.exe"
+          if ($app.FullName -ne $appTarget) { Move-Item -LiteralPath $app.FullName -Destination $appTarget -Force }
+          if ($launcher.FullName -ne $launcherTarget) { Move-Item -LiteralPath $launcher.FullName -Destination $launcherTarget -Force }
+          Write-Host "App installer: $appTarget"
+          Write-Host "Launcher installer: $launcherTarget"
+
       - name: Upload Windows build artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -67,8 +82,8 @@ jobs:
           body: |
             Automated Windows build of Social Atlas and its standalone launcher.
 
-            - **Social-Atlas-Setup-${{ github.ref_name }}.exe** — Social Atlas desktop app (see asset list for exact versioned filename).
-            - **Social-Atlas-Launcher-Setup-${{ github.ref_name }}.exe** — standalone launcher (see asset list for exact versioned filename).
+            - **Social-Atlas-Setup-<version>.exe** — Social Atlas desktop app installer.
+            - **Social-Atlas-Launcher-Setup-<version>.exe** — standalone launcher installer.
             - **renderer.bundle.js** — frontend update bundle for supported in-app updates.
 
             User data is stored locally and is not removed by app upgrades.
