@@ -3,6 +3,7 @@ name: Build Windows desktop release
 on:
   push:
     branches: [main]
+    tags: ['v*']
   workflow_dispatch:
 
 permissions:
@@ -15,7 +16,18 @@ jobs:
       - name: Check out source
         uses: actions/checkout@v4
 
-      # No npm cache: this repository intentionally has no committed lockfile.
+      - name: Set version from Git ref
+        shell: pwsh
+        run: |
+          if ($env:GITHUB_REF -like 'refs/tags/v*') { $version = $env:GITHUB_REF_NAME.Substring(1) }
+          else { $version = "0.1.0-dev.$env:GITHUB_RUN_NUMBER" }
+          if ($version -notmatch '^\d+\.\d+\.\d+([-.][0-9A-Za-z.-]+)?$') { throw "Invalid version: $version" }
+          npm version --no-git-tag-version --allow-same-version $version
+          Push-Location launcher
+          npm version --no-git-tag-version --allow-same-version $version
+          Pop-Location
+          "APP_VERSION=$version" >> $env:GITHUB_ENV
+
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
@@ -40,29 +52,30 @@ jobs:
         with:
           name: Social-Atlas-Windows-Build
           path: |
-            dist/Social-Atlas-Setup-0.1.0.exe
+            dist/Social-Atlas-Setup-*.exe
             renderer.bundle.js
-            launcher/dist/Social-Atlas-Launcher-Setup-1.0.0.exe
+            launcher/dist/Social-Atlas-Launcher-Setup-*.exe
           if-no-files-found: error
           retention-days: 14
 
       - name: Publish app, launcher, and update bundle to GitHub Releases
+        if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v0.1.${{ github.run_number }}
-          name: Social Atlas v0.1.${{ github.run_number }}
+          tag_name: \${{ github.ref_name }}
+          name: Social Atlas \${{ github.ref_name }}
           body: |
             Automated Windows build of Social Atlas and its standalone launcher.
 
-            - **Social-Atlas-Setup-0.1.0.exe** — Social Atlas desktop app.
-            - **Social-Atlas-Launcher-Setup-1.0.0.exe** — standalone launcher with GitHub release checking, downloading, install/update, and launch controls.
+            - **Social-Atlas-Setup-\${{ github.ref_name }}.exe** — Social Atlas desktop app (see asset list for exact versioned filename).
+            - **Social-Atlas-Launcher-Setup-\${{ github.ref_name }}.exe** — standalone launcher (see asset list for exact versioned filename).
             - **renderer.bundle.js** — frontend update bundle for supported in-app updates.
 
-            Your people, relationships, and events remain stored locally on this device.
+            User data is stored locally and is not removed by app upgrades.
           draft: false
           prerelease: false
           make_latest: true
           files: |
-            dist/Social-Atlas-Setup-0.1.0.exe
+            dist/Social-Atlas-Setup-*.exe
             renderer.bundle.js
-            launcher/dist/Social-Atlas-Launcher-Setup-1.0.0.exe
+            launcher/dist/Social-Atlas-Launcher-Setup-*.exe
