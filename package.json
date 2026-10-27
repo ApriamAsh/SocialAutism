@@ -8,7 +8,7 @@
   "scripts": {
     "start": "electron .",
     "dist:win": "npm run build:renderer && electron-builder --win nsis --publish never",
-    "build:renderer": "esbuild renderer.js --bundle --format=iife --outfile=renderer.bundle.js"
+    "build:renderer": "node scripts/check-source.js && esbuild renderer.js --bundle --format=iife --outfile=renderer.bundle.js"
   },
   "devDependencies": {
     "electron": "^38.2.0",
