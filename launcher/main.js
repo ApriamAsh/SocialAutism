@@ -45,13 +45,11 @@ async function readJson(url) {
 }
 
 function selectRelease(releases) {
-  const usable = releases.find(release => {
-    if (!release || release.draft || release.prerelease || !release.tag_name || !Array.isArray(release.assets)) return false;
-    return release.assets.some(asset => /^Social-Atlas-Setup-.*\.exe$/i.test(asset.name) && asset.browser_download_url);
-  });
+  const usable = releases.find(release => !release?.draft && !release?.prerelease && release?.tag_name && Array.isArray(release.assets) && release.assets.some(asset => /^Social-Atlas-Setup-.*\.exe$/i.test(asset.name) && asset.browser_download_url));
   if (!usable) throw new Error('No published release containing the Social Atlas Windows installer was found.');
   const installer = usable.assets.find(asset => /^Social-Atlas-Setup-.*\.exe$/i.test(asset.name) && asset.browser_download_url);
-  return { version: usable.tag_name, name: usable.name || usable.tag_name, url: installer.browser_download_url, releaseUrl: usable.html_url || RELEASES_PAGE, size: installer.size || 0 };
+  const launcherInstaller = usable.assets.find(asset => /^Social-Atlas-Launcher-Setup-.*\.exe$/i.test(asset.name) && asset.browser_download_url);
+  return { version: usable.tag_name, name: usable.name || usable.tag_name, url: installer.browser_download_url, size: installer.size || 0, launcherUrl: launcherInstaller?.browser_download_url || null, launcherSize: launcherInstaller?.size || 0, releaseUrl: usable.html_url || RELEASES_PAGE };
 }
 
 async function getLatestRelease() {
@@ -80,12 +78,66 @@ function send(channel, payload) { if (win && !win.isDestroyed()) win.webContents
 ipcMain.handle('launcher:status', async () => {
   try {
     const release = await getLatestRelease();
-    return { ok: true, installed: installed(), installPath: installPath(), version: release.version, releaseName: release.name, releaseUrl: release.releaseUrl, size: release.size, busy: downloadState.busy };
+    const currentLauncherVersion = app.getVersion();
+    const releaseVersion = String(release.version).replace(/^v/i, '');
+    return { ok: true, installed: installed(), installPath: installPath(), version: release.version, releaseName: release.name, releaseUrl: release.releaseUrl, size: release.size, busy: downloadState.busy, launcherVersion: currentLauncherVersion, latestLauncherVersion: releaseVersion, launcherUpdateAvailable: Boolean(release.launcherUrl && releaseVersion !== currentLauncherVersion), launcherUrlAvailable: Boolean(release.launcherUrl) };
   } catch (e) {
     return { ok: false, installed: installed(), installPath: installPath(), error: e.message, releaseUrl: RELEASES_PAGE };
   }
 });
 ipcMain.handle('launcher:open-release', async () => shell.openExternal(RELEASES_PAGE));
+ipcMain.handle('launcher:self-update', async () => {
+  if (downloadState.busy) return { ok: false, message: 'Another update is already running.' };
+  downloadState = { busy: true, received: 0, total: 0 };
+  let temp;
+  try {
+    const release = await getLatestRelease();
+    if (!release.launcherUrl) throw new Error('This release does not include the launcher installer yet.');
+    const current = app.getVersion();
+    const latest = String(release.version).replace(/^v/i, '');
+    if (latest === current) return { ok: true, current: true, message: 'The launcher is already up to date.' };
+    const downloads = path.join(app.getPath('userData'), 'downloads');
+    fs.mkdirSync(downloads, { recursive: true });
+    temp = path.join(downloads, 'Social-Atlas-Launcher-Setup.exe.part');
+    const final = path.join(downloads, 'Social-Atlas-Launcher-Setup.exe');
+    try { fs.rmSync(temp, { force: true }); } catch {}
+    send('launcher:progress', { phase: 'launcher-download', percent: 0, message: 'Downloading launcher update ' + release.version + '…' });
+    const response = await request(release.launcherUrl, { Accept: 'application/octet-stream' });
+    downloadState.total = Number(response.headers['content-length']) || release.launcherSize || 0;
+    const out = fs.createWriteStream(temp);
+    await new Promise((resolve, reject) => {
+      let settled = false;
+      const fail = error => { if (settled) return; settled = true; out.destroy(); reject(error); };
+      response.on('data', chunk => {
+        downloadState.received += chunk.length;
+        const percent = downloadState.total ? Math.min(100, Math.round(downloadState.received / downloadState.total * 100)) : 0;
+        send('launcher:progress', { phase: 'launcher-download', percent, message: 'Downloading launcher update… ' + percent + '%' });
+      });
+      response.on('error', fail);
+      out.on('error', fail);
+      out.on('finish', () => out.close(error => { if (error) return fail(error); if (settled) return; settled = true; resolve(); }));
+      response.pipe(out);
+    });
+    const actualSize = fs.statSync(temp).size;
+    if (actualSize < 1000000 || (release.launcherSize && actualSize !== release.launcherSize)) throw new Error('Launcher update failed its size check. Nothing was installed; please retry.');
+    fs.rmSync(final, { force: true });
+    fs.renameSync(temp, final);
+    temp = null;
+    send('launcher:progress', { phase: 'launcher-install', percent: 100, message: 'Starting launcher installer. The launcher will close while it updates…' });
+    const child = spawn(final, [], { detached: true, stdio: 'ignore', windowsHide: false });
+    child.once('error', error => send('launcher:progress', { phase: 'error', percent: 0, message: 'Could not open launcher installer: ' + error.message }));
+    child.unref();
+    setTimeout(() => app.quit(), 900);
+    return { ok: true, message: 'Launcher installer started. The launcher is closing so the new version can replace it.' };
+  } catch (error) {
+    if (temp) try { fs.rmSync(temp, { force: true }); } catch {}
+    send('launcher:progress', { phase: 'error', percent: 0, message: error.message });
+    return { ok: false, message: error.message };
+  } finally {
+    downloadState.busy = false;
+  }
+});
+
 ipcMain.handle('launcher:launch', async () => {
   const target = installPath();
   if (!fs.existsSync(target)) return { ok: false, message: 'Social Atlas is not installed yet. Use Install / Update first.' };
