@@ -62,13 +62,13 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: \${{ github.ref_name }}
-          name: Social Atlas \${{ github.ref_name }}
+          tag_name: ${{ github.ref_name }}
+          name: Social Atlas ${{ github.ref_name }}
           body: |
             Automated Windows build of Social Atlas and its standalone launcher.
 
-            - **Social-Atlas-Setup-\${{ github.ref_name }}.exe** — Social Atlas desktop app (see asset list for exact versioned filename).
-            - **Social-Atlas-Launcher-Setup-\${{ github.ref_name }}.exe** — standalone launcher (see asset list for exact versioned filename).
+            - **Social-Atlas-Setup-${{ github.ref_name }}.exe** — Social Atlas desktop app (see asset list for exact versioned filename).
+            - **Social-Atlas-Launcher-Setup-${{ github.ref_name }}.exe** — standalone launcher (see asset list for exact versioned filename).
             - **renderer.bundle.js** — frontend update bundle for supported in-app updates.
 
             User data is stored locally and is not removed by app upgrades.
