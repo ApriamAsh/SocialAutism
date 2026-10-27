@@ -16,10 +16,23 @@
   "build": {
     "appId": "com.darkfyre.socialatlas.launcher",
     "productName": "Social Atlas Launcher",
-    "directories": { "output": "dist" },
-    "files": ["main.js", "preload.js", "index.html"],
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "index.html"
+    ],
     "win": {
-      "target": [{ "target": "nsis", "arch": ["x64"] }],
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
       "artifactName": "Social-Atlas-Launcher-Setup-${version}.${ext}"
     },
     "nsis": {
@@ -27,7 +40,8 @@
       "perMachine": false,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "shortcutName": "Social Atlas Launcher"
+      "shortcutName": "Social Atlas Launcher",
+      "deleteAppDataOnUninstall": false
     }
   }
 }
