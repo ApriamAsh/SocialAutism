@@ -121,4 +121,21 @@ $('check-updates').addEventListener('click', async () => {
   }
 });
 renderAll();
+function leaveMainMenu(view='map'){
+  const menu=$('game-menu');
+  if(!menu)return;
+  if(view!=='map')setView(view);
+  menu.classList.add('menu-exit');
+  setTimeout(()=>menu.remove(),430);
+  playTone('tap');
+}
+$('menu-continue')?.addEventListener('click',()=>leaveMainMenu('map'));
+$('menu-people')?.addEventListener('click',()=>leaveMainMenu('people'));
+$('menu-timeline')?.addEventListener('click',()=>leaveMainMenu('timeline'));
+document.addEventListener('keydown',e=>{
+  const menu=$('game-menu');
+  if(menu&&!menu.classList.contains('menu-exit')&&(e.key==='Enter'||e.key===' ')){
+    if(e.target===document.body||e.target===menu){e.preventDefault();leaveMainMenu('map')}
+  }
+});
 })();
