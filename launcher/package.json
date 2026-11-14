@@ -1,6 +1,6 @@
 {
   "name": "social-atlas-launcher",
-  "version": "1.0.0",
+  "version": "0.1.46",
   "description": "Dark sci-fi launcher and updater for Social Atlas",
   "main": "main.js",
   "author": "ApriamAsh",
