@@ -52,6 +52,20 @@ function selectRelease(releases) {
   return { version: usable.tag_name, name: usable.name || usable.tag_name, url: installer.browser_download_url, size: installer.size || 0, launcherUrl: launcherInstaller?.browser_download_url || null, launcherSize: launcherInstaller?.size || 0, releaseUrl: usable.html_url || RELEASES_PAGE };
 }
 
+async function getReleaseHistory() {
+  const releases = await readJson(API + '/releases?per_page=15');
+  if (!Array.isArray(releases)) throw new Error('GitHub release history was not an array.');
+  return releases
+    .filter(release => !release.draft)
+    .slice(0, 15)
+    .map(release => ({
+      tag_name: String(release.tag_name || ''),
+      name: String(release.name || release.tag_name || 'Untitled release'),
+      published_at: release.published_at || release.created_at || null,
+      body: String(release.body || '').slice(0, 12000)
+    }));
+}
+
 async function getLatestRelease() {
   // Prefer the canonical latest endpoint; fall back to the release list if GitHub/CDN
   // intermittently returns 404 for /releases/latest.
@@ -86,6 +100,10 @@ ipcMain.handle('launcher:status', async () => {
   }
 });
 ipcMain.handle('launcher:open-release', async () => shell.openExternal(RELEASES_PAGE));
+ipcMain.handle('launcher:changelog', async () => {
+  try { return { ok: true, releases: await getReleaseHistory() }; }
+  catch (error) { return { ok: false, error: error.message, releases: [] }; }
+});
 ipcMain.handle('launcher:self-update', async () => {
   if (downloadState.busy) return { ok: false, message: 'Another update is already running.' };
   downloadState = { busy: true, received: 0, total: 0 };
