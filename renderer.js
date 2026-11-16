@@ -147,6 +147,12 @@ $('pause-add')?.addEventListener('click',()=>{hidePauseMenu();openPerson()});
 $('pause-export')?.addEventListener('click',()=>{hidePauseMenu();exportData()});
 $('pause-main-menu')?.addEventListener('click',returnToMainMenu);
 document.addEventListener('keydown',e=>{
+  if(e.key==='Escape'){
+    const dialogs=[...document.querySelectorAll('dialog[open]')];
+    if(dialogs.length){dialogs.forEach(d=>d.close());e.preventDefault();e.stopImmediatePropagation();}
+  }
+},true);
+document.addEventListener('keydown',e=>{
   if(e.key!=='Escape'||!document.body.classList.contains('world-active')||document.querySelector('dialog[open]'))return;
   e.preventDefault();if(worldPaused)hidePauseMenu();else showPauseMenu();
 });
