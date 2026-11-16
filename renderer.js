@@ -129,8 +129,8 @@ function showPauseMenu(){
   $('pause-menu').classList.remove('hidden');$('pause-resume').focus();playTone('tap');
 }
 function hidePauseMenu(){worldPaused=false;$('pause-menu').classList.add('hidden');$('graph').focus?.();playTone('tap')}
-function leaveWorldToView(view){worldExploreMode=false;worldPaused=false;$('pause-menu').classList.add('hidden');document.body.classList.remove('world-active');setView(view)}
-function returnToMainMenu(){worldExploreMode=false;worldPaused=false;$('pause-menu').classList.add('hidden');document.body.classList.remove('world-active');const menu=$('game-menu');menu.classList.remove('hidden','menu-exit');setView('map');playTone('tap')}
+function leaveWorldToView(view){worldExploreMode=false;worldPaused=false;$('pause-menu').classList.add('hidden');document.body.classList.remove('world-active');$('graph').classList.remove('explore-mode');setView(view)}
+function returnToMainMenu(){worldExploreMode=false;worldPaused=false;$('pause-menu').classList.add('hidden');document.body.classList.remove('world-active');$('graph').classList.remove('explore-mode');const menu=$('game-menu');menu.classList.remove('hidden','menu-exit');setView('map');playTone('tap')}
 function leaveMainMenu(view='map'){
   const menu=$('game-menu');if(!menu)return;
   menu.classList.add('menu-exit');setTimeout(()=>menu.classList.add('hidden'),430);
