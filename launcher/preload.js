@@ -5,6 +5,5 @@ contextBridge.exposeInMainWorld('atlasLauncher', {
   install: () => ipcRenderer.invoke('launcher:install'),
   selfUpdate: () => ipcRenderer.invoke('launcher:self-update'),
   openRelease: () => ipcRenderer.invoke('launcher:open-release'),
-  changelog: () => ipcRenderer.invoke('launcher:changelog'),
   onProgress: (callback) => ipcRenderer.on('launcher:progress', (_event, payload) => callback(payload))
 });

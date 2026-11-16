@@ -17,11 +17,9 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Set version from Git ref
-        id: version
         shell: pwsh
         run: |
           if ($env:GITHUB_REF -like 'refs/tags/v*') { $version = $env:GITHUB_REF_NAME.Substring(1) }
-          elseif ($env:GITHUB_REF -eq 'refs/heads/main') { $version = "0.1.$env:GITHUB_RUN_NUMBER" }
           else { $version = "0.1.0-dev.$env:GITHUB_RUN_NUMBER" }
           if ($version -notmatch '^\d+\.\d+\.\d+([-.][0-9A-Za-z.-]+)?$') { throw "Invalid version: $version" }
           npm version --no-git-tag-version --allow-same-version $version
@@ -29,7 +27,6 @@ jobs:
           npm version --no-git-tag-version --allow-same-version $version
           Pop-Location
           "APP_VERSION=$version" >> $env:GITHUB_ENV
-          "version=$version" >> $env:GITHUB_OUTPUT
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
@@ -77,17 +74,16 @@ jobs:
           retention-days: 14
 
       - name: Publish app, launcher, and update bundle to GitHub Releases
-        if: ${{ startsWith(github.ref, 'refs/tags/v') || github.ref == 'refs/heads/main' }}
+        if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ startsWith(github.ref, 'refs/tags/v') && github.ref_name || format('v{0}', steps.version.outputs.version) }}
-          target_commitish: ${{ github.sha }}
-          name: Social Atlas v${{ steps.version.outputs.version }}
+          tag_name: ${{ github.ref_name }}
+          name: Social Atlas ${{ github.ref_name }}
           body: |
             Automated Windows build of Social Atlas and its standalone launcher.
 
-            - **Social-Atlas-Setup-${{ steps.version.outputs.version }}.exe** — Social Atlas desktop app installer.
-            - **Social-Atlas-Launcher-Setup-${{ steps.version.outputs.version }}.exe** — standalone launcher installer.
+            - **Social-Atlas-Setup-<version>.exe** — Social Atlas desktop app installer.
+            - **Social-Atlas-Launcher-Setup-<version>.exe** — standalone launcher installer.
             - **renderer.bundle.js** — frontend update bundle for supported in-app updates.
 
             User data is stored locally and is not removed by app upgrades.
