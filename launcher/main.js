@@ -98,13 +98,13 @@ function registryInstallPath() {
     const keys = [...output.matchAll(/^HKEY[^\\r\\n]+/gm)].map(match => match[0]);
     for (const key of keys) {
       const details = spawnSync('reg.exe', ['query', key, '/v', 'InstallLocation'], { encoding: 'utf8', windowsHide: true }).stdout || '';
-      const match = details.match(/InstallLocation\\s+REG_SZ\\s+(.+)/i);
+      const match = details.match(/InstallLocation\s+REG_SZ\s+(.+)/i);
       if (match) {
         const candidate = path.join(match[1].trim(), 'Social Atlas.exe');
         if (fs.existsSync(candidate)) return candidate;
       }
       const icon = spawnSync('reg.exe', ['query', key, '/v', 'DisplayIcon'], { encoding: 'utf8', windowsHide: true }).stdout || '';
-      const iconMatch = icon.match(/DisplayIcon\\s+REG_SZ\\s+(.+?Social Atlas\\.exe)/i);
+      const iconMatch = icon.match(/DisplayIcon\s+REG_SZ\s+(.+?Social Atlas\.exe)/i);
       if (iconMatch) {
         const candidate = iconMatch[1].trim().replace(/^"|"$/g, '');
         if (fs.existsSync(candidate)) return candidate;
@@ -128,7 +128,7 @@ function installPath() {
 function installed() { return fs.existsSync(installPath()); }
 function rememberInstallPath(executablePath) {
   const normalized = path.resolve(executablePath);
-  if (!fs.existsSync(normalized) || !/Social Atlas\\.exe$/i.test(normalized)) {
+  if (!fs.existsSync(normalized) || !/Social Atlas\.exe$/i.test(normalized)) {
     throw new Error('That file does not look like the Social Atlas application executable.');
   }
   const config = readLauncherConfig();
