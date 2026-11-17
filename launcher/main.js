@@ -1,8 +1,8 @@
-const { app, BrowserWindow, ipcMain, shell } = require('electron');
+const { app, BrowserWindow, ipcMain, shell, dialog } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const https = require('https');
-const { spawn } = require('child_process');
+const { spawn, spawnSync } = require('child_process');
 
 const REPO = 'ApriamAsh/SocialAutism';
 const API = 'https://api.github.com/repos/' + REPO;
@@ -69,10 +69,72 @@ async function getLatestRelease() {
   }
 }
 
-function installPath() {
+const launcherConfigPath = () => path.join(app.getPath('userData'), 'launcher-config.json');
+function readLauncherConfig() {
+  try { return JSON.parse(fs.readFileSync(launcherConfigPath(), 'utf8')); }
+  catch { return {}; }
+}
+function saveLauncherConfig(config) {
+  const target = launcherConfigPath();
+  fs.mkdirSync(path.dirname(target), { recursive: true });
+  const temp = target + '.tmp';
+  fs.writeFileSync(temp, JSON.stringify(config, null, 2), 'utf8');
+  fs.renameSync(temp, target);
+}
+function defaultInstallPath() {
   return path.join(process.env.LOCALAPPDATA || app.getPath('userData'), 'Programs', 'Social Atlas', 'Social Atlas.exe');
 }
+function registryInstallPath() {
+  if (process.platform !== 'win32') return null;
+  // Electron-builder's per-user NSIS installer registers the application here.
+  const roots = [
+    'HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall',
+    'HKLM\\Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall',
+    'HKLM\\Software\\WOW6432Node\\Microsoft\\Windows\\CurrentVersion\\Uninstall'
+  ];
+  for (const root of roots) {
+    const result = spawnSync('reg.exe', ['query', root, '/s', '/f', 'Social Atlas'], { encoding: 'utf8', windowsHide: true });
+    const output = result.stdout || '';
+    const keys = [...output.matchAll(/^HKEY[^\\r\\n]+/gm)].map(match => match[0]);
+    for (const key of keys) {
+      const details = spawnSync('reg.exe', ['query', key, '/v', 'InstallLocation'], { encoding: 'utf8', windowsHide: true }).stdout || '';
+      const match = details.match(/InstallLocation\\s+REG_SZ\\s+(.+)/i);
+      if (match) {
+        const candidate = path.join(match[1].trim(), 'Social Atlas.exe');
+        if (fs.existsSync(candidate)) return candidate;
+      }
+      const icon = spawnSync('reg.exe', ['query', key, '/v', 'DisplayIcon'], { encoding: 'utf8', windowsHide: true }).stdout || '';
+      const iconMatch = icon.match(/DisplayIcon\\s+REG_SZ\\s+(.+?Social Atlas\\.exe)/i);
+      if (iconMatch) {
+        const candidate = iconMatch[1].trim().replace(/^"|"$/g, '');
+        if (fs.existsSync(candidate)) return candidate;
+      }
+    }
+  }
+  return null;
+}
+function installPath() {
+  const config = readLauncherConfig();
+  const saved = typeof config.installPath === 'string' ? config.installPath : '';
+  if (saved && fs.existsSync(saved)) return saved;
+  const candidates = [defaultInstallPath(), registryInstallPath()].filter(Boolean);
+  const found = candidates.find(candidate => fs.existsSync(candidate));
+  if (found) {
+    saveLauncherConfig({ ...config, installPath: found, lastKnownInstallDirectory: path.dirname(found) });
+    return found;
+  }
+  return saved || defaultInstallPath();
+}
 function installed() { return fs.existsSync(installPath()); }
+function rememberInstallPath(executablePath) {
+  const normalized = path.resolve(executablePath);
+  if (!fs.existsSync(normalized) || !/Social Atlas\\.exe$/i.test(normalized)) {
+    throw new Error('That file does not look like the Social Atlas application executable.');
+  }
+  const config = readLauncherConfig();
+  saveLauncherConfig({ ...config, installPath: normalized, lastKnownInstallDirectory: path.dirname(normalized) });
+  return normalized;
+}
 function send(channel, payload) { if (win && !win.isDestroyed()) win.webContents.send(channel, payload); }
 
 ipcMain.handle('launcher:status', async () => {
@@ -86,6 +148,18 @@ ipcMain.handle('launcher:status', async () => {
   }
 });
 ipcMain.handle('launcher:open-release', async () => shell.openExternal(RELEASES_PAGE));
+ipcMain.handle('launcher:locate', async () => {
+  const result = await dialog.showOpenDialog(win, {
+    title: 'Locate Social Atlas',
+    properties: ['openFile'],
+    filters: [{ name: 'Social Atlas application', extensions: ['exe'] }]
+  });
+  if (result.canceled || !result.filePaths?.[0]) return { ok: false, canceled: true };
+  try {
+    const target = rememberInstallPath(result.filePaths[0]);
+    return { ok: true, installPath: target };
+  } catch (error) { return { ok: false, message: error.message }; }
+});
 ipcMain.handle('launcher:self-update', async () => {
   if (downloadState.busy) return { ok: false, message: 'Another update is already running.' };
   downloadState = { busy: true, received: 0, total: 0 };
@@ -191,8 +265,13 @@ ipcMain.handle('launcher:install', async () => {
     fs.rmSync(final, { force: true });
     fs.renameSync(temp, final);
     temp = null;
-    send('launcher:progress', { phase: 'install', percent: 100, message: 'Opening Social Atlas installer…' });
-    const child = spawn(final, [], { detached: true, stdio: 'ignore', windowsHide: false });
+    const existingExecutable = installPath();
+    const existingDirectory = fs.existsSync(existingExecutable) ? path.dirname(existingExecutable) : null;
+    send('launcher:progress', { phase: 'install', percent: 100, message: existingDirectory ? 'Opening updater for your existing installation…' : 'Opening Social Atlas installer…' });
+    // NSIS installs into the remembered directory. Running this code happens only
+    // after the user explicitly presses Install / Update; startup never invokes it.
+    const installerArgs = existingDirectory ? ['/D=' + existingDirectory] : [];
+    const child = spawn(final, installerArgs, { detached: true, stdio: 'ignore', windowsHide: false });
     child.once('error', error => send('launcher:progress', { phase: 'error', percent: 0, message: 'Could not open installer: ' + error.message }));
     child.unref();
     send('launcher:progress', { phase: 'done', percent: 100, message: 'Installer opened. Complete its steps, then click Launch Social Atlas.' });
